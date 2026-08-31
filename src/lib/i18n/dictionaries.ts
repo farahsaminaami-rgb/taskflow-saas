@@ -1,0 +1,228 @@
+export const en: Dictionary = {
+  "nav.dashboard": "Dashboard",
+  "nav.overview": "Overview",
+  "nav.projects": "Projects",
+  "nav.board": "Board",
+  "nav.members": "Members",
+  "nav.analytics": "Analytics",
+  "nav.billing": "Billing",
+  "nav.settings": "Settings",
+
+  "sidebar.promo":
+    "Drag tasks, add teammates and upgrade to Pro when you outgrow the Free limits.",
+  "sidebar.collapse": "Collapse sidebar",
+
+  "header.notifications": "Notifications",
+  "header.notificationsNew": "{count} new",
+  "header.markAllRead": "Mark all read",
+  "header.allCaughtUp": "You're all caught up.",
+  "header.switchWorkspace": "Switch workspace",
+  "header.selectWorkspace": "Select workspace",
+  "header.workspaces": "Workspaces",
+  "header.createWorkspace": "Create workspace",
+  "header.homeAria": "TaskFlow home",
+
+  "menu.accountMenuAria": "Account menu",
+  "menu.user": "User",
+  "menu.toggleDark": "Toggle dark mode",
+  "menu.account": "Account",
+  "menu.signOut": "Sign out",
+  "menu.signOutError": "Unable to sign out.",
+
+  "language.label": "Switch language",
+
+  "auth.heroTitle": "One board, every team, in perfect sync.",
+  "auth.heroSubtitle":
+    "Multi-tenant Kanban boards with realtime updates, analytics, time tracking and subscription billing built in.",
+  "auth.heroFooter": "Open source · PostgreSQL RLS · Next.js",
+  "auth.loginTitle": "Welcome back",
+  "auth.loginSubtitle": "Sign in to your workspace.",
+  "auth.noAccount": "Don't have an account?",
+  "auth.createOne": "Create one",
+  "auth.signIn": "Sign in",
+  "auth.signingIn": "Signing in…",
+  "auth.email": "Email",
+  "auth.password": "Password",
+  "auth.emailPlaceholder": "you@company.com",
+  "auth.orContinueWith": "or continue with",
+  "auth.google": "Google",
+  "auth.github": "GitHub",
+  "auth.getStarted": "Get started",
+  "auth.registerSubtitle": "Create your account — your first workspace comes free.",
+  "auth.haveAccount": "Already registered?",
+  "auth.fullName": "Full name",
+  "auth.namePlaceholder": "Ada Lovelace",
+  "auth.confirmPassword": "Confirm password",
+  "auth.creatingAccount": "Creating account…",
+  "auth.createAccount": "Create account",
+  "auth.welcomeToast": "Account created — welcome to TaskFlow!",
+
+  "workspace.createTitle": "Create your first workspace",
+  "workspace.createDescription":
+    "Workspaces are fully isolated teams with their own projects, boards and members.",
+  "workspace.name": "Workspace name",
+  "workspace.namePlaceholder": "Acme Inc",
+  "workspace.url": "Workspace URL",
+  "workspace.createdToast": "Workspace created — invite your team!",
+
+  "account.loading": "Loading account…",
+  "account.title": "Account",
+  "account.description": "Your profile and active sign-in session.",
+  "account.unnamed": "Unnamed user",
+  "account.signOut": "Sign out",
+
+  "overview.title": "Workspace overview",
+  "overview.subtitle": "Live metrics across every project.",
+  "overview.newProject": "New project",
+  "overview.totalTasks": "Total tasks",
+  "overview.completionRate": "Completion rate",
+  "overview.overdue": "Overdue",
+  "overview.done": "Done",
+  "overview.hintAllProjects": "across all projects",
+  "overview.hintDoneOf": "{done} of {total} done",
+  "overview.hintNeedAttention": "need attention",
+  "overview.hintTotalCompleted": "total completed",
+  "overview.burndown": "Burn-down · last 14 days",
+  "overview.burndownDesc": "Work remaining vs. completed",
+  "overview.byStatus": "Tasks by status",
+  "overview.byStatusDesc": "Distribution across board columns",
+  "overview.noTasks": "No tasks yet — create one on the board.",
+  "overview.createdVsCompleted": "Created vs. completed",
+  "overview.throughput": "Daily throughput over the last 14 days",
+  "overview.topContributors": "Top contributors",
+  "overview.byTasksCompleted": "By tasks completed",
+  "overview.unknown": "Unknown",
+  "overview.tasksAssigned": "{total} tasks assigned",
+  "overview.doneBadge": "{done} done",
+  "overview.noContributions": "Assign tasks to see contributions.",
+  "overview.latestProjects": "Latest projects",
+  "overview.jumpStraight": "Jump straight into a board",
+  "overview.viewAll": "View all",
+  "overview.viewerBadge": "Viewer",
+  "overview.viewerBannerPre": "You have",
+  "overview.viewerBanner": "access — tasks are read-only for you.",
+};
+
+export interface Dictionary {
+  [key: string]: string;
+}
+
+export function translate(dict: Dictionary, key: keyof Dictionary, params?: Record<string, string | number>) {
+  let text: string = dict[key];
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      text = text.replaceAll(`{${k}}`, String(v));
+    }
+  }
+  return text;
+}
+
+export const ar: Record<keyof Dictionary, string> = {
+  "nav.dashboard": "لوحة التحكم",
+  "nav.overview": "نظرة عامة",
+  "nav.projects": "المشاريع",
+  "nav.board": "اللوحة",
+  "nav.members": "الأعضاء",
+  "nav.analytics": "التحليلات",
+  "nav.billing": "الفواتير",
+  "nav.settings": "الإعدادات",
+
+  "sidebar.promo":
+    "اسحب المهام وأضِف زملاءك وقم بالترقية إلى Pro عندما تتجاوز حدود الخطة المجانية.",
+  "sidebar.collapse": "طي الشريط الجانبي",
+
+  "header.notifications": "الإشعارات",
+  "header.notificationsNew": "{count} جديد",
+  "header.markAllRead": "تحديد الكل كمقروء",
+  "header.allCaughtUp": "لا توجد إشعارات جديدة.",
+  "header.switchWorkspace": "تبديل مساحة العمل",
+  "header.selectWorkspace": "اختر مساحة العمل",
+  "header.workspaces": "مساحات العمل",
+  "header.createWorkspace": "إنشاء مساحة عمل",
+  "header.homeAria": "الرئيسية TaskFlow",
+
+  "menu.accountMenuAria": "قائمة الحساب",
+  "menu.user": "مستخدم",
+  "menu.toggleDark": "تبديل الوضع الداكن",
+  "menu.account": "الحساب",
+  "menu.signOut": "تسجيل الخروج",
+  "menu.signOutError": "تعذّر تسجيل الخروج.",
+
+  "language.label": "تغيير اللغة",
+
+  "auth.heroTitle": "لوحة واحدة، كل فريق، في تزامن مثالي.",
+  "auth.heroSubtitle":
+    "لوحات كانبان متعددة المستأجرين مع تحديثات فورية وتحليلات وتتبع للوقت وفوترة اشتراكات مدمجة.",
+  "auth.heroFooter": "مفتوح المصدر · PostgreSQL RLS · Next.js",
+  "auth.loginTitle": "مرحباً بعودتك",
+  "auth.loginSubtitle": "سجّل الدخول إلى مساحة عملك.",
+  "auth.noAccount": "ليس لديك حساب؟",
+  "auth.createOne": "أنشئ حساباً",
+  "auth.signIn": "تسجيل الدخول",
+  "auth.signingIn": "جارٍ تسجيل الدخول…",
+  "auth.email": "البريد الإلكتروني",
+  "auth.password": "كلمة المرور",
+  "auth.emailPlaceholder": "you@company.com",
+  "auth.orContinueWith": "أو تابع باستخدام",
+  "auth.google": "Google",
+  "auth.github": "GitHub",
+  "auth.getStarted": "ابدأ الآن",
+  "auth.registerSubtitle": "أنشئ حسابك — مساحة العمل الأولى مجاناً.",
+  "auth.haveAccount": "لديك حساب بالفعل؟",
+  "auth.fullName": "الاسم الكامل",
+  "auth.namePlaceholder": "Ada Lovelace",
+  "auth.confirmPassword": "تأكيد كلمة المرور",
+  "auth.creatingAccount": "جارٍ إنشاء الحساب…",
+  "auth.createAccount": "إنشاء حساب",
+  "auth.welcomeToast": "تم إنشاء الحساب — مرحباً بك في TaskFlow!",
+
+  "workspace.createTitle": "أنشئ مساحة العمل الأولى",
+  "workspace.createDescription":
+    "مساحات العمل فرق معزولة بالكامل مع مشاريع ولوحات وأعضاء خاصة بها.",
+  "workspace.name": "اسم مساحة العمل",
+  "workspace.namePlaceholder": "Acme Inc",
+  "workspace.url": "رابط مساحة العمل",
+  "workspace.createdToast": "تم إنشاء مساحة العمل — ادعُ فريقك!",
+
+  "account.loading": "جارٍ تحميل الحساب…",
+  "account.title": "الحساب",
+  "account.description": "ملفك الشخصي وجلسة تسجيل الدخول النشطة.",
+  "account.unnamed": "مستخدم بدون اسم",
+  "account.signOut": "تسجيل الخروج",
+
+  "overview.title": "نظرة عامة على مساحة العمل",
+  "overview.subtitle": "مؤشرات حية عبر كل المشاريع.",
+  "overview.newProject": "مشروع جديد",
+  "overview.totalTasks": "إجمالي المهام",
+  "overview.completionRate": "نسبة الإنجاز",
+  "overview.overdue": "متأخرة",
+  "overview.done": "مكتملة",
+  "overview.hintAllProjects": "عبر كل المشاريع",
+  "overview.hintDoneOf": "أُنجز {done} من أصل {total}",
+  "overview.hintNeedAttention": "تحتاج إلى اهتمام",
+  "overview.hintTotalCompleted": "إجمالي المكتمل",
+  "overview.burndown": "مخطط الحرق · آخر 14 يوماً",
+  "overview.burndownDesc": "المتبقي مقابل المكتمل",
+  "overview.byStatus": "المهام حسب الحالة",
+  "overview.byStatusDesc": "التوزيع عبر أعمدة اللوحة",
+  "overview.noTasks": "لا توجد مهام بعد — أنشئ واحدة على اللوحة.",
+  "overview.createdVsCompleted": "المُنشأ مقابل المكتمل",
+  "overview.throughput": "الإنتاجية اليومية خلال آخر 14 يوماً",
+  "overview.topContributors": "الأكثر مساهمة",
+  "overview.byTasksCompleted": "حسب المهام المكتملة",
+  "overview.unknown": "غير معروف",
+  "overview.tasksAssigned": "مهام مُسنَدة: {total}",
+  "overview.doneBadge": "مكتمل {done}",
+  "overview.noContributions": "أسند المهام لمشاهدة المساهمات.",
+  "overview.latestProjects": "أحدث المشاريع",
+  "overview.jumpStraight": "انتقل مباشرة إلى لوحة",
+  "overview.viewAll": "عرض الكل",
+  "overview.viewerBadge": "مُشاهِد",
+  "overview.viewerBannerPre": "لديك صلاحية",
+  "overview.viewerBanner": "— المهام للقراءة فقط.",
+};
+
+export const dictionaries: Record<import("./config").Locale, Dictionary> = {
+  en,
+  ar,
+};

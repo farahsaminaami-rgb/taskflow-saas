@@ -1,0 +1,600 @@
+// ============================================================================
+// TASKFLOW — Multi-Tenant SaaS Task Management Platform
+// ----------------------------------------------------------------------------
+// Tenancy strategy:
+//   Every tenant-scoped entity carries a `workspaceId` FK that acts as the
+//   tenant (org) key. Access is enforced at TWO layers:
+//     1. Service layer  — every query in `src/services/*` scopes by the
+//                         authenticated membership's `workspaceId`.
+//     2. Database layer — PostgreSQL Row-Level Security policies (see
+//                         `prisma/sql/rls.sql`) as defense-in-depth so a
+//                         leaked connection can never cross tenants.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Portfolio-level roles for a member within a single workspace(organization).
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  REVOKED
+}
+
+enum InvitationKind {
+  EMAIL
+  LINK
+}
+
+/// Canonical column category — used for analytics (burn-down, velocity).
+enum ColumnCategory {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TimeEntrySource {
+  MANUAL
+  TIMER
+  IMPORT
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_MENTIONED
+  TASK_STATUS_CHANGED
+  TASK_COMMENTED
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  INVITATION_RECEIVED
+  MEMBER_JOINED
+  MEMBER_LEFT
+  WORKSPACE_UPDATED
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  BUSINESS
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+// ---------------------------------------------------------------------------
+// Identity & Auth (NextAuth.js compatible)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String    @unique
+  emailVerified DateTime? @db.Timestamptz(6)
+  image         String?
+  passwordHash  String?
+  timezone      String    @default("UTC")
+  locale        String    @default("en")
+  isOnboarded   Boolean   @default(false)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(6)
+
+  accounts           Account[]
+  sessions           Session[]
+  memberships        WorkspaceMember[]
+  invitedAs          Invitation[]      @relation("InvitationSent")
+  invitationsAccepted Invitation[]     @relation("InvitationAccepted")
+  comments           Comment[]
+  createdTasks       Task[]            @relation("TaskCreator")
+  assignedTasks      TaskAssignment[]
+  timeEntries        TimeEntry[]
+  notifications      Notification[]    @relation("NotificationRecipient")
+  notifiedActors     Notification[]    @relation("NotificationActor")
+  taskMentions       TaskMention[]
+  ownedWorkspaces    Workspace[]       @relation("WorkspaceOwner")
+  createdProjects    Project[]
+  uploadedAttachments Attachment[]
+  activityLogs       ActivityLog[]
+  lastSeenAt         DateTime?         @db.Timestamptz(6)
+
+  @@index([email])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime @db.Timestamptz(6)
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy core
+// ---------------------------------------------------------------------------
+
+/// A workspace is the tenant boundary (an organization / team).
+model Workspace {
+  id                 String     @id @default(uuid()) @db.Uuid
+  slug               String     @unique
+  name               String
+  logoUrl            String?
+  description        String?
+  ownerId            String     @db.Uuid /// creator — first OWNER member
+  plan               SubscriptionPlan @default(FREE)
+  maxProjects        Int        @default(3)
+  maxMembers         Int        @default(5)
+  maxTasksPerProject Int        @default(100)
+  stripeCustomerId   String?    @unique
+  stripeSubscriptionId String?  @unique
+  createdAt          DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime   @updatedAt @db.Timestamptz(6)
+
+  owner          User              @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  members        WorkspaceMember[]
+  invitations    Invitation[]
+  projects       Project[]
+  statusColumns  StatusColumn[]
+  tags           ProjectTag[]
+  tasks          Task[]
+  assignments    TaskAssignment[]
+  tagRelations   TaskTagRelation[]
+  mentions       TaskMention[]
+  comments       Comment[]
+  attachments    Attachment[]
+  timeEntries    TimeEntry[]
+  activeTimers   ActiveTimer[]
+  notifications  Notification[]
+  subscription   Subscription?
+  billingEvents  BillingEvent[]
+  activityLogs   ActivityLog[]
+
+  @@index([ownerId])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String           @id @default(uuid()) @db.Uuid
+  workspaceId String           @db.Uuid
+  userId      String           @db.Uuid
+  role        UserRole         @default(MEMBER)
+  status      MembershipStatus @default(ACTIVE)
+  joinedAt    DateTime         @default(now()) @db.Timestamptz(6)
+  leftAt      DateTime?        @db.Timestamptz(6)
+  lastAccessAt DateTime?       @db.Timestamptz(6)
+
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@index([workspaceId])
+  @@map("workspace_members")
+}
+
+model Invitation {
+  id            String           @id @default(uuid()) @db.Uuid
+  workspaceId   String           @db.Uuid
+  email         String?
+  token         String           @unique
+  role          UserRole         @default(MEMBER)
+  kind          InvitationKind   @default(EMAIL)
+  status        InvitationStatus @default(PENDING)
+  invitedById   String           @db.Uuid
+  acceptedById  String?          @db.Uuid
+  expiresAt     DateTime         @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(6)
+  respondedAt   DateTime?        @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User @relation("InvitationSent", fields: [invitedById], references: [id])
+  acceptedBy User? @relation("InvitationAccepted", fields: [acceptedById], references: [id])
+
+  @@index([workspaceId])
+  @@index([token])
+  @@index([email])
+  @@map("invitations")
+}
+
+// ---------------------------------------------------------------------------
+// Projects & Kanban configuration
+// ---------------------------------------------------------------------------
+
+model Project {
+  id            String   @id @default(uuid()) @db.Uuid
+  workspaceId   String   @db.Uuid
+  name          String
+  key           String /// short code e.g. "PAY"
+  description   String?
+  color         String   @default("#6366f1")
+  isArchived    Boolean  @default(false)
+  createdById   String   @db.Uuid
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy     User         @relation(fields: [createdById], references: [id])
+  statusColumns StatusColumn[]
+  tasks         Task[]
+  tags          ProjectTag[]
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId, isArchived])
+  @@map("projects")
+}
+
+/// Customizable Kanban columns, ordered by `position`.
+model StatusColumn {
+  id          String          @id @default(uuid()) @db.Uuid
+  workspaceId String          @db.Uuid
+  projectId   String          @db.Uuid
+  name        String
+  category    ColumnCategory  @default(TODO)
+  position    Int             @default(0)
+  color       String          @default("#94a3b8")
+  isDefault   Boolean         @default(false)
+  isArchived  Boolean         @default(false)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@unique([projectId, name])
+  @@index([projectId, position])
+  @@map("status_columns")
+}
+
+model ProjectTag {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  projectId   String   @db.Uuid
+  name        String
+  color       String   @default("#94a3b8")
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     TaskTagRelation[]
+
+  @@unique([projectId, name])
+  @@index([workspaceId])
+  @@map("project_tags")
+}
+
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+model Task {
+  id             String       @id @default(uuid()) @db.Uuid
+  workspaceId    String       @db.Uuid
+  projectId      String       @db.Uuid
+  columnId       String       @db.Uuid
+  createdById    String       @db.Uuid
+  title          String
+  description    String?      @db.Text
+  priority       TaskPriority @default(MEDIUM)
+  dueAt          DateTime?    @db.Timestamptz(6)
+  startedAt      DateTime?    @db.Timestamptz(6)
+  completedAt    DateTime?    @db.Timestamptz(6)
+  position       Int          @default(0) /// ordering within a column
+  coverImage     String?
+  isArchived     Boolean      @default(false)
+  metadata       Json?        @default("{}")
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+
+  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column       StatusColumn      @relation(fields: [columnId], references: [id], onDelete: Restrict)
+  createdBy    User              @relation("TaskCreator", fields: [createdById], references: [id])
+  assignees    TaskAssignment[]
+  comments     Comment[]
+  attachments  Attachment[]
+  tags         TaskTagRelation[]
+  timeEntries  TimeEntry[]
+  mentions     TaskMention[]
+  timer        ActiveTimer?
+
+  @@index([workspaceId])
+  @@index([projectId, isArchived])
+  @@index([columnId, position])
+  @@index([dueAt])
+  @@index([completedAt])
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id          String           @id @default(uuid()) @db.Uuid
+  workspaceId String           @db.Uuid
+  taskId      String           @db.Uuid
+  userId      String           @db.Uuid
+  assignedAt  DateTime         @default(now()) @db.Timestamptz(6)
+
+  task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("task_assignments")
+}
+
+model TaskTagRelation {
+  id          String @id @default(uuid()) @db.Uuid
+  taskId      String @db.Uuid
+  tagId       String @db.Uuid
+  workspaceId String @db.Uuid
+
+  task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag       ProjectTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, tagId])
+  @@index([workspaceId])
+  @@map("task_tag_relations")
+}
+
+model TaskMention {
+  id          String   @id @default(uuid()) @db.Uuid
+  taskId      String   @db.Uuid
+  userId      String   @db.Uuid
+  workspaceId String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([workspaceId])
+  @@map("task_mentions")
+}
+
+model Comment {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  taskId      String   @db.Uuid
+  authorId    String   @db.Uuid
+  body        String   @db.Text
+  editedAt    DateTime?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  task      Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User           @relation(fields: [authorId], references: [id])
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@index([workspaceId])
+  @@map("comments")
+}
+
+model Attachment {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  taskId      String   @db.Uuid
+  uploadedById String  @db.Uuid
+  name        String
+  mimeType    String
+  size        Int
+  url         String
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy  User      @relation(fields: [uploadedById], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([workspaceId])
+  @@map("attachments")
+}
+
+// ---------------------------------------------------------------------------
+// Time tracking
+// ---------------------------------------------------------------------------
+
+model TimeEntry {
+  id            String          @id @default(uuid()) @db.Uuid
+  workspaceId   String          @db.Uuid
+  taskId        String          @db.Uuid
+  userId        String          @db.Uuid
+  minutes       Int             @default(0)
+  source        TimeEntrySource @default(MANUAL)
+  note          String?
+  startedAt     DateTime        @default(now()) @db.Timestamptz(6)
+  endedAt       DateTime?       @db.Timestamptz(6)
+
+  task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id])
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([workspaceId])
+  @@index([userId, startedAt])
+  @@map("time_entries")
+}
+
+/// At most one active timer per user.
+model ActiveTimer {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  userId      String   @unique @db.Uuid
+  taskId      String   @unique @db.Uuid
+  startedAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  task      Task      @relation(fields: [taskId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("active_timers")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id              String           @id @default(uuid()) @db.Uuid
+  workspaceId     String           @db.Uuid
+  recipientId     String           @db.Uuid
+  actorId         String?          @db.Uuid
+  type            NotificationType
+  title           String
+  message         String?
+  taskId          String?          @db.Uuid
+  projectId       String?          @db.Uuid
+  data            Json?            @default("{}")
+  readAt          DateTime?        @db.Timestamptz(6)
+  isRead          Boolean          @default(false)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+
+  workspace  Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  recipient  User            @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor      User?           @relation("NotificationActor", fields: [actorId], references: [id])
+
+  @@index([recipientId, createdAt])
+  @@index([workspaceId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+
+model Subscription {
+  id                String              @id @default(uuid()) @db.Uuid
+  workspaceId       String              @unique @db.Uuid
+  plan              SubscriptionPlan    @default(FREE)
+  status            SubscriptionStatus  @default(TRIALING)
+  interval          BillingInterval     @default(MONTHLY)
+  stripeCustomerId  String?
+  stripeSubscriptionId String?
+  currentPeriodStart DateTime?          @db.Timestamptz(6)
+  currentPeriodEnd   DateTime?          @db.Timestamptz(6)
+  seats             Int                 @default(1)
+  trialEndsAt       DateTime?           @db.Timestamptz(6)
+  cancelAtPeriodEnd Boolean             @default(false)
+  createdAt         DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime            @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+/// Auditable history of billing events.
+model BillingEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  workspaceId  String   @db.Uuid
+  stripeEventId String? @unique
+  type         String
+  payload      Json     @default("{}")
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([stripeEventId])
+  @@map("billing_events")
+}
+
+// ---------------------------------------------------------------------------
+// Audit trail
+// ---------------------------------------------------------------------------
+
+model ActivityLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  actorId     String   @db.Uuid
+  entityType  String
+  entityId    String?
+  action      String
+  meta        Json?    @default("{}")
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User      @relation(fields: [actorId], references: [id])
+
+  @@index([workspaceId, createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}
