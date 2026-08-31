@@ -24,3 +24,6 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local setup scripts / docs (not part of the app)
+supabase_setup.sql
