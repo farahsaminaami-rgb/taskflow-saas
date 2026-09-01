@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
 import { SubmitButton } from "@/components/auth/submit-button";
+import { GoogleIcon } from "@/components/auth/google-icon";
 import { registerAction } from "@/actions/auth.actions";
 import type { ActionResult } from "@/lib/validators";
 import { useI18n } from "@/lib/i18n/client-provider";
@@ -102,7 +104,7 @@ export function RegisterForm() {
         />
       </Field>
 
-      {authError && !fieldErrors.email && (
+      {authError && (
         <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{authError}</span>
@@ -112,6 +114,30 @@ export function RegisterForm() {
       <SubmitButton loading={pending} loadingLabel={t("auth.creatingAccount")}>
         {t("auth.createAccount")}
       </SubmitButton>
+
+      {process.env.NEXT_PUBLIC_ENABLE_OAUTH === "true" && (
+        <div className="space-y-4 pt-1">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-zinc-800" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-[#111827] px-3 text-xs text-zinc-500">
+                {t("auth.orContinueWith")}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => signIn("google", { callbackUrl: "/app" })}
+            className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-zinc-700/70 bg-zinc-900 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+          >
+            <GoogleIcon />
+            <span>{t("auth.signInWithGoogle")}</span>
+          </button>
+        </div>
+      )}
     </form>
   );
 }
