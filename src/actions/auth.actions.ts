@@ -7,6 +7,7 @@ import {
   loginSchema,
 } from "@/lib/validators/auth";
 import { ActionResult, fail, ok } from "@/lib/validators";
+import { toUserFacingMessage } from "@/lib/errors";
 
 const authService = new AuthService();
 
@@ -30,7 +31,7 @@ export async function registerAction(input: unknown): Promise<ActionResult<{ ema
     });
     return ok({ email: user.email });
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Unable to create your account.");
+    return fail(toUserFacingMessage(error, "Unable to create your account."));
   }
 }
 
@@ -47,7 +48,10 @@ export async function loginAction(input: unknown): Promise<ActionResult<{ url: s
       redirect: false,
     });
     return ok({ url: "/app" });
-  } catch {
+  } catch (error) {
+    // Never echo raw credentials / DB errors. Log the cause, return a safe,
+    // generic message so users get no hint about internals.
+    console.error("[auth] login failed (details hidden from user):", error);
     return fail("Invalid email or password.");
   }
 }

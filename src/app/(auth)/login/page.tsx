@@ -3,7 +3,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth-gate";
 import { getDictionary } from "@/lib/i18n/get-locale";
-import { translate } from "@/lib/i18n/dictionaries";import { LoginForm } from "@/components/auth/login-form";
+import { translate } from "@/lib/i18n/dictionaries";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -15,35 +17,35 @@ export default async function LoginPage() {
   const t = (key: keyof typeof dict) => translate(dict, key);
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-12 text-white">
-        <Link href="/" className="text-2xl font-bold tracking-tight">
-          TaskFlow
-        </Link>
-        <div>
-          <h1 className="text-4xl font-bold leading-tight max-w-md">
-            {t("auth.heroTitle")}
-          </h1>
-          <p className="mt-4 max-w-md text-white/80">
-            {t("auth.heroSubtitle")}
-          </p>
-        </div>
-        <p className="text-white/60 text-sm">{t("auth.heroFooter")}</p>
+    <AuthShell
+      headline={t("auth.heroTitle")}
+      subtitle={t("auth.heroSubtitle")}
+      footer={t("auth.footer")}
+      features={[
+        t("auth.feature.realtime"),
+        t("auth.feature.sync"),
+        t("auth.feature.analytics"),
+        t("auth.feature.timer"),
+        t("auth.feature.security"),
+      ]}
+      aside={
+        <>
+          {t("auth.noAccount")}{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-indigo-300 transition-colors hover:text-indigo-200"
+          >
+            {t("auth.createOne")}
+          </Link>
+        </>
+      }
+    >
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold tracking-tight">{t("auth.loginTitle")}</h2>
+        <p className="mt-1.5 text-sm text-white/50">{t("auth.loginSubtitle")}</p>
       </div>
 
-      <div className="flex items-center justify-center p-8">
-        <div className="w-full max-w-sm">
-          <h2 className="text-2xl font-bold">{t("auth.loginTitle")}</h2>
-          <p className="text-muted-foreground mb-6">{t("auth.loginSubtitle")}</p>
-          <LoginForm />
-          <p className="mt-6 text-sm text-muted-foreground text-center">
-            {t("auth.noAccount")}{" "}
-            <Link href="/register" className="text-primary font-medium hover:underline">
-              {t("auth.createOne")}
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+      <LoginForm />
+    </AuthShell>
   );
 }

@@ -56,6 +56,14 @@ export const en: Dictionary = {
   "auth.creatingAccount": "Creating account…",
   "auth.createAccount": "Create account",
   "auth.welcomeToast": "Account created — welcome to TaskFlow!",
+  "auth.feature.realtime": "Real-time Kanban boards with drag & drop",
+  "auth.feature.sync": "Live sync across your whole team",
+  "auth.feature.analytics": "Burn-down, velocity & project analytics",
+  "auth.feature.timer": "Built-in time tracking per task",
+  "auth.feature.security": "Row-level security on every tenant",
+  "auth.footer": "Open source · PostgreSQL RLS · Next.js",
+  "auth.forgotPassword": "Forgot password?",
+  "auth.backToHome": "Back to home",
 
   "workspace.createTitle": "Create your first workspace",
   "workspace.createDescription":
@@ -175,6 +183,14 @@ export const ar: Record<keyof Dictionary, string> = {
   "auth.creatingAccount": "جارٍ إنشاء الحساب…",
   "auth.createAccount": "إنشاء حساب",
   "auth.welcomeToast": "تم إنشاء الحساب — مرحباً بك في TaskFlow!",
+  "auth.feature.realtime": "لوحات كانبان فورية مع السحب والإفلات",
+  "auth.feature.sync": "مزامنة مباشرة مع فريقك بالكامل",
+  "auth.feature.analytics": "مخططات الحرق والسرعة وتحليلات المشاريع",
+  "auth.feature.timer": "تتبع مدمج للوقت لكل مهمة",
+  "auth.feature.security": "أمان على مستوى الصف لكل مستأجر",
+  "auth.footer": "مفتوح المصدر · PostgreSQL RLS · Next.js",
+  "auth.forgotPassword": "نسيت كلمة المرور؟",
+  "auth.backToHome": "العودة للرئيسية",
 
   "workspace.createTitle": "أنشئ مساحة العمل الأولى",
   "workspace.createDescription":
