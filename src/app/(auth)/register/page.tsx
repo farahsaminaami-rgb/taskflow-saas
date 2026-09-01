@@ -18,33 +18,20 @@ export default async function RegisterPage() {
 
   return (
     <AuthShell
-      headline={t("auth.heroTitle")}
-      subtitle={t("auth.heroSubtitle")}
-      footer={t("auth.footer")}
-      features={[
-        t("auth.feature.realtime"),
-        t("auth.feature.sync"),
-        t("auth.feature.analytics"),
-        t("auth.feature.timer"),
-        t("auth.feature.security"),
-      ]}
-      aside={
+      title={t("auth.getStarted")}
+      subtitle={t("auth.registerSubtitle")}
+      footerLink={
         <>
           {t("auth.haveAccount")}{" "}
           <Link
             href="/login"
-            className="font-semibold text-indigo-300 transition-colors hover:text-indigo-200"
+            className="font-medium text-indigo-400 transition-colors hover:text-indigo-300"
           >
             {t("auth.signIn")}
           </Link>
         </>
       }
     >
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold tracking-tight">{t("auth.getStarted")}</h2>
-        <p className="mt-1.5 text-sm text-white/50">{t("auth.registerSubtitle")}</p>
-      </div>
-
       <RegisterForm />
     </AuthShell>
   );

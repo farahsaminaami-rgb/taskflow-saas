@@ -24,7 +24,7 @@ export function SubmitButton({
       type="submit"
       disabled={loading}
       className={cn(
-        "group relative w-full h-11 overflow-hidden rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:from-indigo-400 hover:to-violet-400 hover:shadow-indigo-500/40 focus-visible:ring-2 focus-visible:ring-indigo-400/60 disabled:opacity-60",
+        "group relative w-full h-11 overflow-hidden rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:from-indigo-500 hover:to-indigo-600 disabled:opacity-60 disabled:pointer-events-none",
         className
       )}
     >

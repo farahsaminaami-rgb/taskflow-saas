@@ -62,7 +62,7 @@ export function RegisterForm() {
           placeholder={t("auth.namePlaceholder")}
           required
           autoComplete="name"
-          className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/30"
+          className="bg-zinc-900/80 border-zinc-800 text-zinc-50 placeholder:text-zinc-500"
         />
       </Field>
 
@@ -74,7 +74,7 @@ export function RegisterForm() {
           placeholder={t("auth.emailPlaceholder")}
           required
           autoComplete="email"
-          className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/30"
+          className="bg-zinc-900/80 border-zinc-800 text-zinc-50 placeholder:text-zinc-500"
         />
       </Field>
 
@@ -84,7 +84,7 @@ export function RegisterForm() {
           name="password"
           required
           autoComplete="new-password"
-          className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/30"
+          className="bg-zinc-900/80 border-zinc-800 text-zinc-50 placeholder:text-zinc-500"
         />
       </Field>
 
@@ -98,12 +98,12 @@ export function RegisterForm() {
           name="confirmPassword"
           required
           autoComplete="new-password"
-          className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/30"
+          className="bg-zinc-900/80 border-zinc-800 text-zinc-50 placeholder:text-zinc-500"
         />
       </Field>
 
       {authError && !fieldErrors.email && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-200">
+        <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{authError}</span>
         </div>
@@ -128,8 +128,8 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2">
-      <Label htmlFor={htmlFor} className="text-white/75">
+    <div className="space-y-1.5">
+      <Label htmlFor={htmlFor} className="text-sm text-zinc-300">
         {label}
       </Label>
       {children}

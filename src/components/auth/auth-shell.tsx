@@ -1,87 +1,59 @@
 import type { ReactNode } from "react";
-import {
-  KanbanSquare,
-  Radio,
-  BarChart3,
-  Timer,
-  ShieldCheck,
-} from "lucide-react";
+import { KanbanSquare } from "lucide-react";
 
 /**
  * Shared, high-end dark authentication shell used by both /login and /register.
  *
- * - Forces the `dark` token set so every descendant (inputs, borders, muted
- *   text) renders with the sleek dark palette regardless of the user's theme.
- * - Layered radial "mesh" glows + a hairline grid provide depth without the
- *   old aggressive full-bleed purple gradient.
+ * - Deep neutral `#090d16` background with subtle ambient glows — no aggressive
+ *   full-bleed gradient.
+ * - Centers a sophisticated glassmorphism card (`#111827`, `backdrop-blur-sm`,
+ *   `border-white/10`, `rounded-2xl`) with a clean TaskFlow logo inside.
+ * - Forces the `dark` token set so every descendant renders with the sleek dark
+ *   palette regardless of the user's theme, and follows the document `dir`
+ *   (LTR / RTL) automatically.
  *
  * Text is supplied via props so server pages can pass fully translated strings
  * (the app ships English + Arabic / RTL).
  */
 export function AuthShell({
-  headline,
+  title,
   subtitle,
-  features,
-  footer,
-  aside,
+  footerLink,
   children,
 }: {
-  headline: string;
+  title: string;
   subtitle: string;
-  features: string[];
-  footer: string;
-  aside: ReactNode;
+  footerLink: ReactNode;
   children: ReactNode;
 }) {
-  const featureIcons = [KanbanSquare, Radio, BarChart3, Timer, ShieldCheck];
-
   return (
-    <div className="dark relative min-h-screen overflow-hidden bg-[#090d16] text-white">
+    <div className="dark relative min-h-screen overflow-hidden bg-[#090d16] text-zinc-50">
       <Background />
 
-      <div className="relative z-10 grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-        {/* Left: brand + product showcase (hidden on small screens) */}
-        <aside className="hidden lg:flex flex-col justify-between px-14 py-12 border-e border-white/[0.06]">
-          <Brand />
-
-          <div className="max-w-md">
-            <h1 className="text-4xl font-bold leading-tight tracking-tight">
-              {headline}
-            </h1>
-            <p className="mt-4 leading-relaxed text-white/55">{subtitle}</p>
-
-            <ul className="mt-10 space-y-5">
-              {features.map((text, i) => {
-                const Icon = featureIcons[i % featureIcons.length];
-                return (
-                  <li key={i} className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-indigo-300">
-                      {Icon ? <Icon className="h-4 w-4" /> : null}
-                    </span>
-                    <span className="text-[15px] text-white/75">{text}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          <p className="text-sm text-white/35">{footer}</p>
-        </aside>
-
-        {/* Right: auth card */}
-        <main className="flex items-center justify-center px-6 py-14 sm:px-10">
-          <div className="w-full max-w-md">
-            <div className="mb-8 flex items-center justify-center gap-2.5 lg:hidden">
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-5 py-10 sm:px-8">
+        <div className="w-full max-w-md">
+          <div className="rounded-2xl border border-white/10 bg-[#111827]/90 p-7 shadow-2xl shadow-black/50 backdrop-blur-sm sm:p-9">
+            {/* Brand inside the card */}
+            <div className="mb-7 flex justify-center">
               <Brand />
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-9">
-              {children}
+            <div className="text-center">
+              <h1 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-[1.6rem]">
+                {title}
+              </h1>
+              <p className="mt-2 text-[15px] leading-relaxed text-zinc-400">
+                {subtitle}
+              </p>
             </div>
 
-            <div className="mt-6 text-center text-sm text-white/45">{aside}</div>
+            <div className="mt-7">{children}</div>
           </div>
-        </main>
+
+          <div className="mt-6 text-center text-sm text-zinc-400">
+            {footerLink}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -90,10 +62,12 @@ export function AuthShell({
 function Brand() {
   return (
     <span className="inline-flex items-center gap-2.5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/30">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-lg shadow-indigo-900/40">
         <KanbanSquare className="h-5 w-5 text-white" />
       </span>
-      <span className="text-xl font-bold tracking-tight">TaskFlow</span>
+      <span className="text-xl font-bold tracking-tight text-zinc-50">
+        TaskFlow
+      </span>
     </span>
   );
 }
@@ -101,17 +75,17 @@ function Brand() {
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden>
-      {/* Mesh glows */}
-      <div className="absolute -top-40 left-1/4 h-[36rem] w-[36rem] rounded-full bg-indigo-600/20 blur-[140px]" />
-      <div className="absolute bottom-[-12rem] right-0 h-[30rem] w-[30rem] rounded-full bg-violet-600/15 blur-[160px]" />
-      <div className="absolute top-1/3 right-1/4 h-72 w-72 rounded-full bg-fuchsia-600/10 blur-[120px]" />
+      {/* Ambient glows — subtle, neutral, professional */}
+      <div className="absolute -top-32 left-1/2 h-[28rem] w-[36rem] -translate-x-1/2 rounded-full bg-indigo-600/15 blur-[150px]" />
+      <div className="absolute bottom-[-10rem] right-[-6rem] h-[24rem] w-[24rem] rounded-full bg-violet-600/10 blur-[150px]" />
+      <div className="absolute bottom-[-8rem] left-[-6rem] h-[20rem] w-[20rem] rounded-full bg-sky-600/10 blur-[140px]" />
       {/* Hairline grid */}
       <div
-        className="absolute inset-0 opacity-[0.04]"
+        className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage:
             "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
-          backgroundSize: "64px 64px",
+          backgroundSize: "56px 56px",
         }}
       />
     </div>

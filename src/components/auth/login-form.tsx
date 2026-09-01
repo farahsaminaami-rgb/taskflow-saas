@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
 import { SubmitButton } from "@/components/auth/submit-button";
+import { GoogleIcon } from "@/components/auth/google-icon";
 import { loginAction } from "@/actions/auth.actions";
 import { useI18n } from "@/lib/i18n/client-provider";
 
@@ -43,8 +44,8 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-5" noValidate>
-      <div className="space-y-2">
-        <Label htmlFor="email" className="text-white/75">
+      <div className="space-y-1.5">
+        <Label htmlFor="email" className="text-sm text-zinc-300">
           {t("auth.email")}
         </Label>
         <Input
@@ -54,20 +55,20 @@ export function LoginForm() {
           placeholder={t("auth.emailPlaceholder")}
           required
           autoComplete="email"
-          className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/30"
+          className="bg-zinc-900/80 border-zinc-800 text-zinc-50 placeholder:text-zinc-500"
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label htmlFor="password" className="text-white/75">
+          <Label htmlFor="password" className="text-sm text-zinc-300">
             {t("auth.password")}
           </Label>
           <button
             type="button"
-            className="text-xs font-medium text-indigo-300/80 hover:text-indigo-200"
+            className="text-xs font-medium text-indigo-400/90 transition-colors hover:text-indigo-300"
           >
-            Forgot?
+            {t("auth.forgotPassword")}
           </button>
         </div>
         <PasswordInput
@@ -75,12 +76,12 @@ export function LoginForm() {
           name="password"
           required
           autoComplete="current-password"
-          className="border-white/10 bg-white/[0.03] text-white placeholder:text-white/30"
+          className="bg-zinc-900/80 border-zinc-800 text-zinc-50 placeholder:text-zinc-500"
         />
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-200">
+        <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -91,35 +92,28 @@ export function LoginForm() {
       </SubmitButton>
 
       {process.env.NEXT_PUBLIC_ENABLE_OAUTH === "true" && (
-        <div className="space-y-4">
+        <div className="space-y-4 pt-1">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-white/10" />
+              <span className="w-full border-t border-zinc-800" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase tracking-wide">
-              <span className="bg-[#0d1322] px-2 text-white/40">
+            <div className="relative flex justify-center">
+              <span className="bg-[#111827] px-3 text-xs text-zinc-500">
                 {t("auth.orContinueWith")}
               </span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <OAuthButton label={t("auth.google")} onClick={() => signIn("google", { callbackUrl: "/app" })} />
-            <OAuthButton label={t("auth.github")} onClick={() => signIn("github", { callbackUrl: "/app" })} />
-          </div>
+
+          <button
+            type="button"
+            onClick={() => signIn("google", { callbackUrl: "/app" })}
+            className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-zinc-700/70 bg-zinc-900 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+          >
+            <GoogleIcon />
+            <span>{t("auth.signInWithGoogle")}</span>
+          </button>
         </div>
       )}
     </form>
-  );
-}
-
-function OAuthButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="h-10 rounded-lg border border-white/10 bg-white/[0.03] text-sm font-medium text-white/80 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60"
-    >
-      {label}
-    </button>
   );
 }

@@ -21,7 +21,7 @@ export const PasswordInput = React.forwardRef<
       <Input
         ref={ref}
         type={visible ? "text" : "password"}
-        className={cn("auth-field pr-10", className)}
+        className={cn("pr-10", className)}
         {...props}
       />
       <button
