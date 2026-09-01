@@ -1,18 +1,19 @@
-import bcrypt from "bcryptjs";
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
-import { prisma } from "@/lib/db";
-import { loginSchema } from "@/lib/validators/auth";
 
 /**
  * Edge-safe NextAuth configuration.
  *
- * Diet constraints of this module:
- *   - No heavy imports (readable by Next.js middleware on the Edge runtime).
- *   - The `authorized` callback performs NO database access; authorization is
- *     enforced later in server components / server actions via `auth-gate.ts`.
+ * This module is imported by `src/middleware.ts`, which Netlify bundles as an
+ * Edge Function. That imposes a hard constraint: it must NOT import any
+ * Node.js-only module (no `bcryptjs`, no Prisma, no `pg`). The real
+ * credentials `authorize` (which performs DB + bcrypt work) lives in
+ * `src/lib/auth.ts` and replaces this stub at composition time.
+ *
+ * - The `authorized` callback performs NO database access; authorization is
+ *   enforced later in server components / server actions via `auth-gate.ts`.
  */
 export const authConfig = {
   trustHost: true,
@@ -28,24 +29,10 @@ export const authConfig = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
-
-        const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email.toLowerCase() },
-        });
-        if (!user?.passwordHash) return null;
-
-        const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
-        if (!valid) return null;
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        };
+      // Edge-safe stub. `auth.ts` overrides providers with the real
+      // implementation (DB + bcrypt), which never runs on the Edge runtime.
+      async authorize() {
+        return null;
       },
     }),
     ...(process.env.GOOGLE_CLIENT_ID
