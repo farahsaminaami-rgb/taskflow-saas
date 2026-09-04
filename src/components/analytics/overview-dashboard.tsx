@@ -4,8 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import {
   BarChart3,
+  Building2,
   CheckCircle2,
   CircleAlert,
+  DollarSign,
+  FileText,
+  History,
   ListChecks,
   TrendingUp,
 } from "lucide-react";
@@ -21,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { initials } from "@/lib/utils";
+import { initials, timeAgo, formatMoney } from "@/lib/utils";
 import { BurndownChart } from "@/components/analytics/burndown-chart";
 import { ActivityTrendChart } from "@/components/analytics/activity-trend-chart";
 import { useWorkspace } from "@/components/workspace/workspace-context";
@@ -42,18 +46,60 @@ export interface OverviewData {
   tags: Array<{ id: string; name: string; color: string }>;
 }
 
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
+
+function activityLabel(action: string, meta: Record<string, unknown>, t: TranslateFn): string {
+  const name = typeof meta?.name === "string" ? meta.name : undefined;
+  const number = typeof meta?.number === "string" ? meta.number : undefined;
+  switch (action) {
+    case "project.created":
+    case "project.updated":
+    case "project.archived":
+      return name ? t(`act.${action}`, { name }) : t("act.generic");
+    case "client.created":
+    case "client.updated":
+    case "client.archived":
+      return name ? t(`act.${action}`, { name }) : t("act.generic");
+    case "invoice.created":
+    case "invoice.updated":
+    case "invoice.sent":
+    case "invoice.paid":
+    case "invoice.cancelled":
+      return number ? t(`act.${action}`, { number }) : t("act.generic");
+    case "ai.asked":
+      return t("act.ai.asked");
+    case "workspace.updated":
+      return t("act.workspace.updated");
+    default:
+      return t("act.generic");
+  }
+}
+
 export function OverviewDashboard({
   overview,
   burndown,
   trend,
   projects,
   role,
+  clientCount,
+  summary,
+  activity,
 }: {
   overview: OverviewData;
   burndown: Array<{ day: string; opened: number; closed: number; remaining: number }>;
   trend: Array<{ label: string; created: number; completed: number }>;
   projects: Array<{ id: string; name: string; key: string; color: string }>;
   role: string;
+  clientCount: number;
+  summary: { outstanding: number; paid: number; overdue: number; count: number };
+  activity: Array<{
+    id: string;
+    action: string;
+    entityType: string;
+    meta: Record<string, unknown>;
+    createdAt: string;
+    actor: { id: string; name: string | null; image: string | null } | null;
+  }>;
 }) {
   const { slug } = useWorkspace();
   const { t } = useI18n();
@@ -112,6 +158,56 @@ export function OverviewDashboard({
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Business overview */}
+      <div>
+        <div className="mb-3">
+          <h3 className="text-sm font-semibold">{t("dash.business")}</h3>
+          <p className="text-xs text-muted-foreground">{t("dash.businessDesc")}</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("dash.clients")}</CardTitle>
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{clientCount}</div>
+              <p className="text-xs text-muted-foreground">{t("dash.clientsHint")}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("dash.revenue")}</CardTitle>
+              <DollarSign className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatMoney(summary.paid)}</div>
+              <p className="text-xs text-muted-foreground">{summary.count ? t("dash.invoicesSent", { count: summary.count }) : ""}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("dash.outstanding")}</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatMoney(summary.outstanding)}</div>
+              <p className="text-xs text-muted-foreground">{t("overview.hintNeedAttention")}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("dash.overdue")}</CardTitle>
+              <CircleAlert className={`h-4 w-4 ${summary.overdue > 0 ? "text-destructive" : "text-muted-foreground"}`} />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${summary.overdue > 0 ? "text-destructive" : ""}`}>{formatMoney(summary.overdue)}</div>
+              <p className="text-xs text-muted-foreground">{summary.count} {t("inv.status.OVERDUE")}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -229,9 +325,47 @@ export function OverviewDashboard({
         </Card>
       )}
 
+      {/* Recent activity */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <History className="h-4 w-4 text-muted-foreground" />
+              {t("dash.activity")}
+            </CardTitle>
+            <CardDescription>{t("dash.activityDesc")}</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {activity.length > 0 ? (
+            <ul className="space-y-1">
+              {activity.map((a) => {
+                const label = activityLabel(a.action, a.meta, t);
+                return (
+                  <li key={a.id} className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-accent/40">
+                    <Avatar className="h-7 w-7">
+                      {a.actor?.image ? <AvatarImage src={a.actor.image} /> : null}
+                      <AvatarFallback>{initials(a.actor?.name, "?")}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">
+                        <span className="font-medium">{a.actor?.name ?? "Someone"} </span>
+                        {label}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(a.createdAt)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("dash.noActivity")}</p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Role banner for viewers */}
-      {role === "VIEWER" && (
-        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+      {role === "VIEWER" && (        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
           {t("overview.viewerBannerPre")} <Badge variant="secondary">{t("overview.viewerBadge")}</Badge>{" "}
           {t("overview.viewerBanner")}
         </div>

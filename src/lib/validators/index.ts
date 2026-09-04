@@ -2,6 +2,7 @@ export * from "./auth";
 export * from "./workspace";
 export * from "./task";
 export * from "./query";
+export * from "./crm";
 
 import { z } from "zod";
 

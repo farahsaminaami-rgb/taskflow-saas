@@ -17,7 +17,10 @@ export type RealtimeEventType =
   | "notification.created"
   | "member.joined"
   | "member.left"
-  | "project.updated";
+  | "project.updated"
+  | "client.updated"
+  | "invoice.updated"
+  | "ai.created";
 
 export interface RealtimeEvent<T = unknown> {
   /** Server-generated sequence number (for SSE Last-Event-ID replay). */
@@ -82,5 +85,8 @@ export function isRealtimeEventType(value: string): value is RealtimeEventType {
     "member.joined",
     "member.left",
     "project.updated",
+    "client.updated",
+    "invoice.updated",
+    "ai.created",
   ].includes(value);
 }

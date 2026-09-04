@@ -158,6 +158,11 @@ select app.enable_tenant_isolation('notifications');
 select app.enable_tenant_isolation('subscriptions');
 select app.enable_tenant_isolation('billing_events');
 select app.enable_tenant_isolation('activity_logs');
+select app.enable_tenant_isolation('clients');
+select app.enable_tenant_isolation('invoices');
+select app.enable_tenant_isolation('invoice_items');
+select app.enable_tenant_isolation('ai_conversations');
+select app.enable_tenant_isolation('ai_messages');
 
 -- Workspaces themselves: visible only to their active members (or the owner).
 alter table workspaces enable row level security;

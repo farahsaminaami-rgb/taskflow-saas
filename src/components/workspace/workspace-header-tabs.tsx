@@ -11,6 +11,9 @@ import {
   BarChart3,
   CreditCard,
   Settings,
+  Building2,
+  FileText,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +24,13 @@ const tabs = (slug: string): Array<{ label: keyof Dictionary; href: string; icon
   const base = `/app/workspace/${slug}`;
   return [
     { label: "nav.overview", href: `${base}`, icon: LayoutDashboard },
+    { label: "nav.clients", href: `${base}/clients`, icon: Building2 },
+    { label: "nav.invoices", href: `${base}/invoices`, icon: FileText },
     { label: "nav.projects", href: `${base}/projects`, icon: FolderKanban },
     { label: "nav.board", href: `${base}/board`, icon: ClipboardList },
     { label: "nav.members", href: `${base}/members`, icon: Users },
     { label: "nav.analytics", href: `${base}/analytics`, icon: BarChart3 },
+    { label: "nav.assistant", href: `${base}/assistant`, icon: Bot },
     { label: "nav.billing", href: `${base}/billing`, icon: CreditCard },
     { label: "nav.settings", href: `${base}/settings`, icon: Settings },
   ];

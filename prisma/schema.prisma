@@ -12,7 +12,7 @@
 // ============================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
 
@@ -83,7 +83,48 @@ enum NotificationType {
   INVITATION_RECEIVED
   MEMBER_JOINED
   MEMBER_LEFT
+  MEMBER_INVITED
+  MEMBER_ROLE_CHANGED
   WORKSPACE_UPDATED
+  CLIENT_CREATED
+  INVOICE_CREATED
+  INVOICE_PAID
+  INVOICE_STATUS_CHANGED
+  INVOICE_DUE_SOON
+  INVOICE_OVERDUE
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  AI_READY
+}
+
+/// Lifecycle of a business client in the CRM module.
+enum ClientStatus {
+  LEAD
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+/// Lifecycle of a business invoice.
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PENDING
+  OVERDUE
+  CANCELLED
+}
+
+/// Supported invoice currencies.
+enum InvoiceCurrency {
+  USD
+  EUR
+  GBP
+  AED
+  SAR
+  EGP
+  KWD
+  QAR
 }
 
 enum SubscriptionPlan {
@@ -123,23 +164,26 @@ model User {
   createdAt     DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime  @updatedAt @db.Timestamptz(6)
 
-  accounts           Account[]
-  sessions           Session[]
-  memberships        WorkspaceMember[]
-  invitedAs          Invitation[]      @relation("InvitationSent")
-  invitationsAccepted Invitation[]     @relation("InvitationAccepted")
-  comments           Comment[]
-  createdTasks       Task[]            @relation("TaskCreator")
-  assignedTasks      TaskAssignment[]
-  timeEntries        TimeEntry[]
-  notifications      Notification[]    @relation("NotificationRecipient")
-  notifiedActors     Notification[]    @relation("NotificationActor")
-  taskMentions       TaskMention[]
-  ownedWorkspaces    Workspace[]       @relation("WorkspaceOwner")
-  createdProjects    Project[]
+  accounts            Account[]
+  sessions            Session[]
+  memberships         WorkspaceMember[]
+  invitedAs           Invitation[]      @relation("InvitationSent")
+  invitationsAccepted Invitation[]      @relation("InvitationAccepted")
+  comments            Comment[]
+  createdTasks        Task[]            @relation("TaskCreator")
+  assignedTasks       TaskAssignment[]
+  timeEntries         TimeEntry[]
+  notifications       Notification[]    @relation("NotificationRecipient")
+  notifiedActors      Notification[]    @relation("NotificationActor")
+  taskMentions        TaskMention[]
+  ownedWorkspaces     Workspace[]       @relation("WorkspaceOwner")
+  createdProjects     Project[]
   uploadedAttachments Attachment[]
-  activityLogs       ActivityLog[]
-  lastSeenAt         DateTime?         @db.Timestamptz(6)
+  activityLogs        ActivityLog[]
+  createdClients      Client[]
+  createdInvoices     Invoice[]
+  aiConversations     AIConversation[]
+  lastSeenAt          DateTime?         @db.Timestamptz(6)
 
   @@index([email])
   @@map("users")
@@ -193,56 +237,60 @@ model VerificationToken {
 
 /// A workspace is the tenant boundary (an organization / team).
 model Workspace {
-  id                 String     @id @default(uuid()) @db.Uuid
-  slug               String     @unique
-  name               String
-  logoUrl            String?
-  description        String?
-  ownerId            String     @db.Uuid /// creator — first OWNER member
-  plan               SubscriptionPlan @default(FREE)
-  maxProjects        Int        @default(3)
-  maxMembers         Int        @default(5)
-  maxTasksPerProject Int        @default(100)
-  stripeCustomerId   String?    @unique
-  stripeSubscriptionId String?  @unique
-  createdAt          DateTime   @default(now()) @db.Timestamptz(6)
-  updatedAt          DateTime   @updatedAt @db.Timestamptz(6)
+  id                   String           @id @default(uuid()) @db.Uuid
+  slug                 String           @unique
+  name                 String
+  logoUrl              String?
+  description          String?
+  ownerId              String           @db.Uuid /// creator — first OWNER member
+  plan                 SubscriptionPlan @default(FREE)
+  maxProjects          Int              @default(3)
+  maxMembers           Int              @default(5)
+  maxTasksPerProject   Int              @default(100)
+  stripeCustomerId     String?          @unique
+  stripeSubscriptionId String?          @unique
+  createdAt            DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime         @updatedAt @db.Timestamptz(6)
 
-  owner          User              @relation("WorkspaceOwner", fields: [ownerId], references: [id])
-  members        WorkspaceMember[]
-  invitations    Invitation[]
-  projects       Project[]
-  statusColumns  StatusColumn[]
-  tags           ProjectTag[]
-  tasks          Task[]
-  assignments    TaskAssignment[]
-  tagRelations   TaskTagRelation[]
-  mentions       TaskMention[]
-  comments       Comment[]
-  attachments    Attachment[]
-  timeEntries    TimeEntry[]
-  activeTimers   ActiveTimer[]
-  notifications  Notification[]
-  subscription   Subscription?
-  billingEvents  BillingEvent[]
-  activityLogs   ActivityLog[]
+  owner           User              @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  members         WorkspaceMember[]
+  invitations     Invitation[]
+  projects        Project[]
+  statusColumns   StatusColumn[]
+  tags            ProjectTag[]
+  tasks           Task[]
+  assignments     TaskAssignment[]
+  tagRelations    TaskTagRelation[]
+  mentions        TaskMention[]
+  comments        Comment[]
+  attachments     Attachment[]
+  timeEntries     TimeEntry[]
+  activeTimers    ActiveTimer[]
+  notifications   Notification[]
+  subscription    Subscription?
+  billingEvents   BillingEvent[]
+  activityLogs    ActivityLog[]
+  clients         Client[]
+  invoices        Invoice[]
+  invoiceItems    InvoiceItem[]
+  aiConversations AIConversation[]
 
   @@index([ownerId])
   @@map("workspaces")
 }
 
 model WorkspaceMember {
-  id          String           @id @default(uuid()) @db.Uuid
-  workspaceId String           @db.Uuid
-  userId      String           @db.Uuid
-  role        UserRole         @default(MEMBER)
-  status      MembershipStatus @default(ACTIVE)
-  joinedAt    DateTime         @default(now()) @db.Timestamptz(6)
-  leftAt      DateTime?        @db.Timestamptz(6)
-  lastAccessAt DateTime?       @db.Timestamptz(6)
+  id           String           @id @default(uuid()) @db.Uuid
+  workspaceId  String           @db.Uuid
+  userId       String           @db.Uuid
+  role         UserRole         @default(MEMBER)
+  status       MembershipStatus @default(ACTIVE)
+  joinedAt     DateTime         @default(now()) @db.Timestamptz(6)
+  leftAt       DateTime?        @db.Timestamptz(6)
+  lastAccessAt DateTime?        @db.Timestamptz(6)
 
-  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, userId])
   @@index([userId])
@@ -251,22 +299,22 @@ model WorkspaceMember {
 }
 
 model Invitation {
-  id            String           @id @default(uuid()) @db.Uuid
-  workspaceId   String           @db.Uuid
-  email         String?
-  token         String           @unique
-  role          UserRole         @default(MEMBER)
-  kind          InvitationKind   @default(EMAIL)
-  status        InvitationStatus @default(PENDING)
-  invitedById   String           @db.Uuid
-  acceptedById  String?          @db.Uuid
-  expiresAt     DateTime         @db.Timestamptz(6)
-  createdAt     DateTime         @default(now()) @db.Timestamptz(6)
-  respondedAt   DateTime?        @db.Timestamptz(6)
+  id           String           @id @default(uuid()) @db.Uuid
+  workspaceId  String           @db.Uuid
+  email        String?
+  token        String           @unique
+  role         UserRole         @default(MEMBER)
+  kind         InvitationKind   @default(EMAIL)
+  status       InvitationStatus @default(PENDING)
+  invitedById  String           @db.Uuid
+  acceptedById String?          @db.Uuid
+  expiresAt    DateTime         @db.Timestamptz(6)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(6)
+  respondedAt  DateTime?        @db.Timestamptz(6)
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  invitedBy User @relation("InvitationSent", fields: [invitedById], references: [id])
-  acceptedBy User? @relation("InvitationAccepted", fields: [acceptedById], references: [id])
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy  User      @relation("InvitationSent", fields: [invitedById], references: [id])
+  acceptedBy User?     @relation("InvitationAccepted", fields: [acceptedById], references: [id])
 
   @@index([workspaceId])
   @@index([token])
@@ -279,39 +327,155 @@ model Invitation {
 // ---------------------------------------------------------------------------
 
 model Project {
-  id            String   @id @default(uuid()) @db.Uuid
-  workspaceId   String   @db.Uuid
-  name          String
-  key           String /// short code e.g. "PAY"
-  description   String?
-  color         String   @default("#6366f1")
-  isArchived    Boolean  @default(false)
-  createdById   String   @db.Uuid
-  createdAt     DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  name        String
+  key         String /// short code e.g. "PAY"
+  description String?
+  color       String   @default("#6366f1")
+  clientId    String?  @db.Uuid
+  isArchived  Boolean  @default(false)
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
 
-  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdBy     User         @relation(fields: [createdById], references: [id])
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation(fields: [createdById], references: [id])
+  client        Client?        @relation(fields: [clientId], references: [id])
   statusColumns StatusColumn[]
   tasks         Task[]
   tags          ProjectTag[]
+  invoices      Invoice[]
 
   @@unique([workspaceId, key])
   @@index([workspaceId, isArchived])
   @@map("projects")
 }
 
-/// Customizable Kanban columns, ordered by `position`.
-model StatusColumn {
+/// A business client / customer of the workspace (CRM).
+model Client {
+  id          String       @id @default(uuid()) @db.Uuid
+  workspaceId String       @db.Uuid
+  companyName String
+  contactName String?
+  email       String?
+  phone       String?
+  website     String?
+  status      ClientStatus @default(LEAD)
+  notes       String?      @db.Text
+  createdById String       @db.Uuid
+  createdAt   DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id])
+  projects  Project[]
+  invoices  Invoice[]
+
+  @@index([workspaceId, status])
+  @@index([createdById])
+  @@map("clients")
+}
+
+/// A business invoice issued to a client, linked to a project.
+model Invoice {
   id          String          @id @default(uuid()) @db.Uuid
   workspaceId String          @db.Uuid
-  projectId   String          @db.Uuid
+  clientId    String          @db.Uuid
+  projectId   String?         @db.Uuid
+  number      String
+  status      InvoiceStatus   @default(DRAFT)
+  currency    InvoiceCurrency @default(USD)
+  issueDate   DateTime        @db.Timestamptz(6)
+  dueDate     DateTime?       @db.Timestamptz(6)
+  taxRate     Float           @default(0)
+  discount    Float           @default(0)
+  subtotal    Float           @default(0)
+  taxAmount   Float           @default(0)
+  total       Float           @default(0)
+  notes       String?         @db.Text
+  createdById String          @db.Uuid
+  paidAt      DateTime?       @db.Timestamptz(6)
+  createdAt   DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client    Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  project   Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdBy User          @relation(fields: [createdById], references: [id])
+  items     InvoiceItem[]
+
+  @@unique([workspaceId, number])
+  @@index([workspaceId, clientId])
+  @@index([workspaceId, status])
+  @@index([workspaceId, dueDate])
+  @@map("invoices")
+}
+
+/// A line item on an invoice.
+model InvoiceItem {
+  id          String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  invoiceId   String @db.Uuid
+  description String
+  quantity    Float  @default(1)
+  unitPrice   Float  @default(0)
+  amount      Float  @default(0)
+
+  invoice   Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([workspaceId])
+  @@map("invoice_items")
+}
+
+/// AI assistant conversations, tenant-scoped so a model never crosses tenants.
+model AIConversation {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  userId      String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AIMessage[]
+
+  @@index([workspaceId, userId])
+  @@map("ai_conversations")
+}
+
+model AIMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @db.Uuid
+  role           AI_ROLE
+  content        String   @db.Text
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("ai_messages")
+}
+
+enum AI_ROLE {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+/// Customizable Kanban columns, ordered by `position`.
+model StatusColumn {
+  id          String         @id @default(uuid()) @db.Uuid
+  workspaceId String         @db.Uuid
+  projectId   String         @db.Uuid
   name        String
-  category    ColumnCategory  @default(TODO)
-  position    Int             @default(0)
-  color       String          @default("#94a3b8")
-  isDefault   Boolean         @default(false)
-  isArchived  Boolean         @default(false)
+  category    ColumnCategory @default(TODO)
+  position    Int            @default(0)
+  color       String         @default("#94a3b8")
+  isDefault   Boolean        @default(false)
+  isArchived  Boolean        @default(false)
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -330,8 +494,8 @@ model ProjectTag {
   color       String   @default("#94a3b8")
   createdAt   DateTime @default(now()) @db.Timestamptz(6)
 
-  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks     TaskTagRelation[]
 
   @@unique([projectId, name])
@@ -344,35 +508,35 @@ model ProjectTag {
 // ---------------------------------------------------------------------------
 
 model Task {
-  id             String       @id @default(uuid()) @db.Uuid
-  workspaceId    String       @db.Uuid
-  projectId      String       @db.Uuid
-  columnId       String       @db.Uuid
-  createdById    String       @db.Uuid
-  title          String
-  description    String?      @db.Text
-  priority       TaskPriority @default(MEDIUM)
-  dueAt          DateTime?    @db.Timestamptz(6)
-  startedAt      DateTime?    @db.Timestamptz(6)
-  completedAt    DateTime?    @db.Timestamptz(6)
-  position       Int          @default(0) /// ordering within a column
-  coverImage     String?
-  isArchived     Boolean      @default(false)
-  metadata       Json?        @default("{}")
-  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+  id          String       @id @default(uuid()) @db.Uuid
+  workspaceId String       @db.Uuid
+  projectId   String       @db.Uuid
+  columnId    String       @db.Uuid
+  createdById String       @db.Uuid
+  title       String
+  description String?      @db.Text
+  priority    TaskPriority @default(MEDIUM)
+  dueAt       DateTime?    @db.Timestamptz(6)
+  startedAt   DateTime?    @db.Timestamptz(6)
+  completedAt DateTime?    @db.Timestamptz(6)
+  position    Int          @default(0) /// ordering within a column
+  coverImage  String?
+  isArchived  Boolean      @default(false)
+  metadata    Json?        @default("{}")
+  createdAt   DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(6)
 
-  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  column       StatusColumn      @relation(fields: [columnId], references: [id], onDelete: Restrict)
-  createdBy    User              @relation("TaskCreator", fields: [createdById], references: [id])
-  assignees    TaskAssignment[]
-  comments     Comment[]
-  attachments  Attachment[]
-  tags         TaskTagRelation[]
-  timeEntries  TimeEntry[]
-  mentions     TaskMention[]
-  timer        ActiveTimer?
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column      StatusColumn      @relation(fields: [columnId], references: [id], onDelete: Restrict)
+  createdBy   User              @relation("TaskCreator", fields: [createdById], references: [id])
+  assignees   TaskAssignment[]
+  comments    Comment[]
+  attachments Attachment[]
+  tags        TaskTagRelation[]
+  timeEntries TimeEntry[]
+  mentions    TaskMention[]
+  timer       ActiveTimer?
 
   @@index([workspaceId])
   @@index([projectId, isArchived])
@@ -383,15 +547,15 @@ model Task {
 }
 
 model TaskAssignment {
-  id          String           @id @default(uuid()) @db.Uuid
-  workspaceId String           @db.Uuid
-  taskId      String           @db.Uuid
-  userId      String           @db.Uuid
-  assignedAt  DateTime         @default(now()) @db.Timestamptz(6)
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  taskId      String   @db.Uuid
+  userId      String   @db.Uuid
+  assignedAt  DateTime @default(now()) @db.Timestamptz(6)
 
-  task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, userId])
   @@index([workspaceId])
@@ -405,9 +569,9 @@ model TaskTagRelation {
   tagId       String @db.Uuid
   workspaceId String @db.Uuid
 
-  task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  tag       ProjectTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  task      Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag       ProjectTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, tagId])
   @@index([workspaceId])
@@ -431,17 +595,17 @@ model TaskMention {
 }
 
 model Comment {
-  id          String   @id @default(uuid()) @db.Uuid
-  workspaceId String   @db.Uuid
-  taskId      String   @db.Uuid
-  authorId    String   @db.Uuid
-  body        String   @db.Text
+  id          String    @id @default(uuid()) @db.Uuid
+  workspaceId String    @db.Uuid
+  taskId      String    @db.Uuid
+  authorId    String    @db.Uuid
+  body        String    @db.Text
   editedAt    DateTime?
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
 
-  task      Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  author    User           @relation(fields: [authorId], references: [id])
-  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([taskId, createdAt])
   @@index([workspaceId])
@@ -449,19 +613,19 @@ model Comment {
 }
 
 model Attachment {
-  id          String   @id @default(uuid()) @db.Uuid
-  workspaceId String   @db.Uuid
-  taskId      String   @db.Uuid
-  uploadedById String  @db.Uuid
-  name        String
-  mimeType    String
-  size        Int
-  url         String
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  id           String   @id @default(uuid()) @db.Uuid
+  workspaceId  String   @db.Uuid
+  taskId       String   @db.Uuid
+  uploadedById String   @db.Uuid
+  name         String
+  mimeType     String
+  size         Int
+  url          String
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
 
-  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  uploadedBy  User      @relation(fields: [uploadedById], references: [id])
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  task       Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User      @relation(fields: [uploadedById], references: [id])
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@index([workspaceId])
@@ -473,19 +637,19 @@ model Attachment {
 // ---------------------------------------------------------------------------
 
 model TimeEntry {
-  id            String          @id @default(uuid()) @db.Uuid
-  workspaceId   String          @db.Uuid
-  taskId        String          @db.Uuid
-  userId        String          @db.Uuid
-  minutes       Int             @default(0)
-  source        TimeEntrySource @default(MANUAL)
-  note          String?
-  startedAt     DateTime        @default(now()) @db.Timestamptz(6)
-  endedAt       DateTime?       @db.Timestamptz(6)
+  id          String          @id @default(uuid()) @db.Uuid
+  workspaceId String          @db.Uuid
+  taskId      String          @db.Uuid
+  userId      String          @db.Uuid
+  minutes     Int             @default(0)
+  source      TimeEntrySource @default(MANUAL)
+  note        String?
+  startedAt   DateTime        @default(now()) @db.Timestamptz(6)
+  endedAt     DateTime?       @db.Timestamptz(6)
 
-  task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User             @relation(fields: [userId], references: [id])
-  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@index([workspaceId])
@@ -513,23 +677,23 @@ model ActiveTimer {
 // ---------------------------------------------------------------------------
 
 model Notification {
-  id              String           @id @default(uuid()) @db.Uuid
-  workspaceId     String           @db.Uuid
-  recipientId     String           @db.Uuid
-  actorId         String?          @db.Uuid
-  type            NotificationType
-  title           String
-  message         String?
-  taskId          String?          @db.Uuid
-  projectId       String?          @db.Uuid
-  data            Json?            @default("{}")
-  readAt          DateTime?        @db.Timestamptz(6)
-  isRead          Boolean          @default(false)
-  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  id          String           @id @default(uuid()) @db.Uuid
+  workspaceId String           @db.Uuid
+  recipientId String           @db.Uuid
+  actorId     String?          @db.Uuid
+  type        NotificationType
+  title       String
+  message     String?
+  taskId      String?          @db.Uuid
+  projectId   String?          @db.Uuid
+  data        Json?            @default("{}")
+  readAt      DateTime?        @db.Timestamptz(6)
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(6)
 
-  workspace  Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  recipient  User            @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  actor      User?           @relation("NotificationActor", fields: [actorId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  recipient User      @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User?     @relation("NotificationActor", fields: [actorId], references: [id])
 
   @@index([recipientId, createdAt])
   @@index([workspaceId])
@@ -542,20 +706,20 @@ model Notification {
 // ---------------------------------------------------------------------------
 
 model Subscription {
-  id                String              @id @default(uuid()) @db.Uuid
-  workspaceId       String              @unique @db.Uuid
-  plan              SubscriptionPlan    @default(FREE)
-  status            SubscriptionStatus  @default(TRIALING)
-  interval          BillingInterval     @default(MONTHLY)
-  stripeCustomerId  String?
+  id                   String             @id @default(uuid()) @db.Uuid
+  workspaceId          String             @unique @db.Uuid
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(TRIALING)
+  interval             BillingInterval    @default(MONTHLY)
+  stripeCustomerId     String?
   stripeSubscriptionId String?
-  currentPeriodStart DateTime?          @db.Timestamptz(6)
-  currentPeriodEnd   DateTime?          @db.Timestamptz(6)
-  seats             Int                 @default(1)
-  trialEndsAt       DateTime?           @db.Timestamptz(6)
-  cancelAtPeriodEnd Boolean             @default(false)
-  createdAt         DateTime            @default(now()) @db.Timestamptz(6)
-  updatedAt         DateTime            @updatedAt @db.Timestamptz(6)
+  currentPeriodStart   DateTime?          @db.Timestamptz(6)
+  currentPeriodEnd     DateTime?          @db.Timestamptz(6)
+  seats                Int                @default(1)
+  trialEndsAt          DateTime?          @db.Timestamptz(6)
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime           @updatedAt @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
@@ -564,12 +728,12 @@ model Subscription {
 
 /// Auditable history of billing events.
 model BillingEvent {
-  id           String   @id @default(uuid()) @db.Uuid
-  workspaceId  String   @db.Uuid
-  stripeEventId String? @unique
-  type         String
-  payload      Json     @default("{}")
-  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  id            String   @id @default(uuid()) @db.Uuid
+  workspaceId   String   @db.Uuid
+  stripeEventId String?  @unique
+  type          String
+  payload       Json     @default("{}")
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 

@@ -12,6 +12,9 @@ import {
   CreditCard,
   Settings,
   Sparkles,
+  Building2,
+  FileText,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,10 +32,13 @@ export function buildNavItems(slug: string): NavItem[] {
   const base = `/app/workspace/${slug}`;
   return [
     { label: "nav.dashboard", href: `${base}`, icon: LayoutDashboard },
+    { label: "nav.clients", href: `${base}/clients`, icon: Building2 },
+    { label: "nav.invoices", href: `${base}/invoices`, icon: FileText },
     { label: "nav.projects", href: `${base}/projects`, icon: FolderKanban },
     { label: "nav.board", href: `${base}/board`, icon: ClipboardList },
     { label: "nav.members", href: `${base}/members`, icon: Users },
     { label: "nav.analytics", href: `${base}/analytics`, icon: BarChart3 },
+    { label: "nav.assistant", href: `${base}/assistant`, icon: Bot },
     { label: "nav.billing", href: `${base}/billing`, icon: CreditCard },
     { label: "nav.settings", href: `${base}/settings`, icon: Settings },
   ];

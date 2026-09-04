@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth-gate";
 import { prisma } from "@/lib/db";
 import { getWorkspaceAnalyticsAction } from "@/actions/project.actions";
+import { invoiceService } from "@/services/invoice.service";
 import { OverviewDashboard } from "@/components/analytics/overview-dashboard";
 import { AnalyticsDetail } from "@/components/analytics/analytics-detail";
 
@@ -17,13 +18,23 @@ export default async function AnalyticsPage({ params }: { params: Promise<Params
   });
   if (!membership) notFound();
 
-  const [analytics, projects] = await Promise.all([
-    getWorkspaceAnalyticsAction(membership.workspaceId),
+  const ws = membership.workspaceId;
+
+  const [analytics, projects, clientCount, summary, activity] = await Promise.all([
+    getWorkspaceAnalyticsAction(ws),
     prisma.project.findMany({
-      where: { workspaceId: membership.workspaceId, isArchived: false },
+      where: { workspaceId: ws, isArchived: false },
       select: { id: true, name: true, key: true, color: true },
       orderBy: { createdAt: "desc" },
       take: 6,
+    }),
+    prisma.client.count({ where: { workspaceId: ws, status: { not: "ARCHIVED" } } }),
+    invoiceService.summary(ws, session.user.id),
+    prisma.activityLog.findMany({
+      where: { workspaceId: ws },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      include: { actor: { select: { id: true, name: true, image: true } } },
     }),
   ]);
 
@@ -35,6 +46,16 @@ export default async function AnalyticsPage({ params }: { params: Promise<Params
         trend={analytics.trend}
         projects={projects}
         role={membership.role}
+        clientCount={clientCount}
+        summary={summary}
+        activity={activity.map((a) => ({
+          id: a.id,
+          action: a.action,
+          entityType: a.entityType,
+          meta: a.meta as Record<string, unknown>,
+          createdAt: a.createdAt.toISOString(),
+          actor: a.actor ? { id: a.actor.id, name: a.actor.name, image: a.actor.image } : null,
+        }))}
       />
       <AnalyticsDetail productivity={analytics.productivity} />
     </>

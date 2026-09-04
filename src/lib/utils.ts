@@ -31,6 +31,24 @@ export function formatDuration(totalMinutes: number): string {
   return `${h}h ${m}m`;
 }
 
+const MONEY_SYMBOL: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  AED: "د.إ",
+  SAR: "﷼",
+  EGP: "E£",
+  KWD: "KD",
+  QAR: "QR",
+};
+
+/** Compact currency formatting with a symbol, e.g. "$1,250.00". */
+export function formatMoney(amount: number, currency = "USD"): string {
+  const symbol = MONEY_SYMBOL[currency] ?? `${currency} `;
+  const value = amount.toLocaleString("en-US", { minimumFractionDigits: Math.abs(amount % 1) > 0.004 ? 2 : 0, maximumFractionDigits: 2 });
+  return `${symbol}${value}`;
+}
+
 /** Returns the integer number of calendar days between now and a due date. */
 export function daysUntil(date: Date | string): number {
   return differenceInCalendarDays(new Date(date), new Date());
